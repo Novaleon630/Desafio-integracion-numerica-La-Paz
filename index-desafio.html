@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Desafío de Integración Numérica · La Paz</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script>window.MathJax = { tex: { inlineMath: [['\\(', '\\)']] } };</script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --ink: #12343b;
+      --acc: #2d6a6a
+    }
+
+    body {
+      background: #f4f6f7;
+      font-size: .95rem
+    }
+
+    header {
+      background: var(--ink);
+      color: #fff
+    }
+
+    .nav-pills .nav-link {
+      color: var(--ink)
+    }
+
+    .nav-pills .nav-link.active {
+      background: var(--acc)
+    }
+
+    .btn-acc {
+      background: var(--acc);
+      color: #fff
+    }
+
+    .btn-acc:hover {
+      background: var(--ink);
+      color: #fff
+    }
+
+    textarea,
+    .mono {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: .85rem
+    }
+
+    .table-sm td,
+    .table-sm th {
+      padding: .25rem .5rem
+    }
+
+    .scroll {
+      max-height: 320px;
+      overflow: auto
+    }
+
+    .ok {
+      background: #e3f1ec !important
+    }
+  </style>
+</head>
+
+<body>
+  <header class="py-3 mb-3">
+    <div class="container">
+      <h1 class="h4 mb-1">Desafío de Integración Numérica · La Paz, Bolivia</h1>
+      <div class="small opacity-75">Trapecio compuesto, Simpson 1/3 y Simpson 3/8 · Ejercicios 19–27 · Métodos Numéricos
+      </div>
+    </div>
+  </header>
+
+  <main class="container pb-4">
+    <ul class="nav nav-pills mb-3 flex-wrap" role="tablist">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill"
+          data-bs-target="#t-res">Resumen</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#t-ej">Ejercicios
+          19–27</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#t-cal"
+          id="tabCal">Calculadora</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#t-gui">Guía</button></li>
+    </ul>
+
+    <div class="tab-content">
+      <!-- RESUMEN -->
+      <section class="tab-pane fade show active" id="t-res">
+        <div class="card card-body mb-3">
+          <h2 class="h5">Informe técnico</h2>
+          <p class="mb-2"><b>Problema.</b> Estimar integrales definidas de problemas de transporte, ingeniería, agua,
+            geometría y energía a partir de datos tabulados o funciones, y comparar los métodos numéricos. Los
+            escenarios de La Paz son adaptaciones didácticas; los datos no son mediciones reales de Bolivia.</p>
+          <p class="mb-2"><b>Procedimiento.</b> \(h=(b-a)/n\) con nodos igualmente espaciados. Trapecio compuesto
+            (cualquier \(n\)), Simpson 1/3 (\(n\) par) y Simpson 3/8 (\(n\) múltiplo de 3). Con \(n=7\) se combinan
+            Simpson 1/3 (4 subintervalos) y 3/8 (3 subintervalos).</p>
+          <p class="mb-0"><b>Conclusiones.</b> Para funciones suaves Simpson es mucho más preciso que el trapecio con el
+            mismo \(n\) (error \(O(h^4)\) frente a \(O(h^2)\)). En el ejercicio 23 el perfil \((1-r/R)^{1/7}\) tiene
+            derivada no acotada en la pared, por eso ambos métodos convergen lento. Si no hay valor exacto o de
+            referencia, no se puede calcular el error verdadero. Los resultados de curvas digitalizadas (21, 26) son
+            estimaciones.</p>
+        </div>
+        <h2 class="h5">Matriz de resultados</h2>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered bg-white" id="matriz"></table>
+        </div>
+      </section>
+
+      <!-- EJERCICIOS -->
+      <section class="tab-pane fade" id="t-ej">
+        <div class="accordion" id="acc"></div>
+      </section>
+
+      <!-- CALCULADORA -->
+      <section class="tab-pane fade" id="t-cal">
+        <div class="row g-3">
+          <div class="col-lg-5">
+            <div class="card card-body">
+              <h2 class="h5">Datos de entrada</h2>
+              <label class="form-label mb-1">Cargar ejercicio</label>
+              <select id="pre" class="form-select form-select-sm mb-2"></select>
+              <div class="btn-group btn-group-sm mb-2" role="group">
+                <input type="radio" class="btn-check" name="mode" id="m1" value="t" checked><label
+                  class="btn btn-outline-secondary" for="m1">Tabla x, y</label>
+                <input type="radio" class="btn-check" name="mode" id="m2" value="f"><label
+                  class="btn btn-outline-secondary" for="m2">Función f(x)</label>
+              </div>
+              <div id="boxT">
+                <label class="form-label mb-1">Pares x, y (uno por línea)</label>
+                <textarea id="tab" class="form-control mb-2" rows="7" placeholder="0,0&#10;1,14&#10;2,39"></textarea>
+                <label class="form-label mb-1">Transformación de y</label>
+                <select id="tr" class="form-select form-select-sm mb-2">
+                  <option value="none">Ninguna (integrar y)</option>
+                  <option value="vol">π·(y/2)² (volumen, y = diámetro)</option>
+                  <option value="sup">2π·(y/2) (fórmula simplificada de superficie)</option>
+                </select>
+              </div>
+              <div id="boxF" class="d-none">
+                <label class="form-label mb-1">f(x) &mdash; usa x, pi, ^, sin, cos, cosh, sinh, sqrt, exp, log</label>
+                <input id="fx" class="form-control form-control-sm mono mb-2" value="x^2">
+                <div class="row g-2 mb-2">
+                  <div class="col-4"><label class="form-label mb-1">a</label><input id="a"
+                      class="form-control form-control-sm" value="0"></div>
+                  <div class="col-4"><label class="form-label mb-1">b</label><input id="b"
+                      class="form-control form-control-sm" value="2"></div>
+                  <div class="col-4"><label class="form-label mb-1">n</label><input id="n"
+                      class="form-control form-control-sm" value="4"></div>
+                </div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col-4"><label class="form-label mb-1">Unidad</label><input id="un"
+                    class="form-control form-control-sm" value="u"></div>
+                <div class="col-4"><label class="form-label mb-1">Factor final</label><input id="sc"
+                    class="form-control form-control-sm" value="1" title="Ej: 1/3600"></div>
+                <div class="col-4"><label class="form-label mb-1">Valor ref.</label><input id="ref"
+                    class="form-control form-control-sm" placeholder="opcional"></div>
+              </div>
+              <label class="form-label mb-1">Método</label>
+              <select id="met" class="form-select form-select-sm mb-3">
+                <option value="all">Comparar todos los aplicables</option>
+                <option value="trap">Trapecio compuesto</option>
+                <option value="s13">Simpson 1/3 (n par)</option>
+                <option value="s38">Simpson 3/8 (n múltiplo de 3)</option>
+                <option value="comb">Combinado 1/3 + 3/8 (n impar)</option>
+                <option value="s13t">Simpson 1/3 + trapecio final (n impar)</option>
+              </select>
+              <div class="d-flex gap-2">
+                <button class="btn btn-acc btn-sm" id="go">Calcular</button>
+                <button class="btn btn-outline-secondary btn-sm" id="ver">Verificar f(x)=x²</button>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <div id="msg"></div>
+            <div id="out" class="d-none">
+              <div class="card card-body mb-3">
+                <h2 class="h5">Resultados <span class="small text-muted" id="info"></span></h2>
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered bg-white mb-0" id="rt"></table>
+                </div>
+              </div>
+              <div class="card card-body mb-3"><canvas id="ch" height="150"></canvas></div>
+              <div class="card card-body">
+                <h2 class="h6">Tabla de nodos y pesos de integración <span class="small text-muted">(I = h·Σ
+                    wᵢ·fᵢ)</span></h2>
+                <div class="scroll">
+                  <table class="table table-sm table-striped mono mb-0" id="wt"></table>
+                </div>
+              </div>
+            </div>
+            <div id="vout"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- GUÍA -->
+      <section class="tab-pane fade" id="t-gui">
+        <div class="row g-3">
+          <div class="col-lg-6">
+            <div class="card card-body mb-3">
+              <h2 class="h5">Formulario permitido</h2>
+              <p class="mb-1">\(h=\dfrac{b-a}{n}\)</p>
+              <p class="mb-1">Trapecio: \(T=h\left[\dfrac{f_0+f_n}{2}+\sum_{i=1}^{n-1}f_i\right]\)</p>
+              <p class="mb-1">Simpson 1/3 (\(n\) par): \(S=\dfrac{h}{3}\left[f_0+f_n+4\sum_{i\ impar}f_i+2\sum_{i\
+                par}f_i\right]\)</p>
+              <p class="mb-1">Simpson 3/8 (\(n\) múltiplo de 3):
+                \(S=\dfrac{3h}{8}\left[f_0+f_n+3\sum_{i\not\equiv0\,(3)}f_i+2\sum_{i\equiv0\,(3)}f_i\right]\)</p>
+              <p class="mb-0">Errores: \(E_a=|I_{ref}-I_{aprox}|\), \(E\%=100E_a/|I_{ref}|\)</p>
+            </div>
+            <div class="card card-body">
+              <h2 class="h5">Asignación sugerida</h2>
+              <table class="table table-sm mb-0">
+                <tr>
+                  <th>Grupo</th>
+                  <th>Ejercicios</th>
+                  <th>Dificultad</th>
+                </tr>
+                <tr>
+                  <td>A</td>
+                  <td>19 y 23</td>
+                  <td>Intermedio</td>
+                </tr>
+                <tr>
+                  <td>B</td>
+                  <td>20 y 25</td>
+                  <td>Intermedio</td>
+                </tr>
+                <tr>
+                  <td>C</td>
+                  <td>21 y 24</td>
+                  <td>Intermedio-alto</td>
+                </tr>
+                <tr>
+                  <td>D</td>
+                  <td>19 y 22</td>
+                  <td>Intermedio</td>
+                </tr>
+                <tr>
+                  <td>E</td>
+                  <td>20 y 27</td>
+                  <td>Intermedio-alto</td>
+                </tr>
+                <tr>
+                  <td>F</td>
+                  <td>23 y 26</td>
+                  <td>Alto</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+        </div>
+    </div>
+    </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const $ = id => document.getElementById(id);
+    const fm = (v, d = 6) => Number.isFinite(v) ? v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: false }) : '—';
+
+    /* ---------- Datos de los ejercicios (solucionario) ---------- */
+    const VEH = '0,0\n1,14\n2,39\n3,69\n4,95\n5,114\n6,129\n7,139';
+    const BAN = '0,0\n0.4,0.85\n0.8,1.30\n1.2,1.60\n1.6,1.87\n2.0,2.14\n2.4,2.34\n2.8,2.52';
+    const PER = '1,1.3\n2,3.7\n3,4.6\n4,4.4\n5,2.7\n6,2.5\n7,3.6\n8,5.3\n9,6.0\n10,5.9';
+    const OBJ = '0,0\n1,2.6\n2,3.2\n3,4.8\n4,5.6\n5,6.0\n6,6.2\n7,6.0\n8,5.6\n9,4.8\n10,3.3\n11,2.6\n12,0';
+    const EX = [
+      { n: 19, t: 'Distancia de un vehículo', tex: 'd=\\int_0^{7}v(t)\\,dt', desc: 'Velocidad de un vehículo experimental durante 7 s. Con v en mi/h y t en s, la integral se divide entre 3600.', mode: 't', data: VEH, sc: '1/3600', un: 'mi', T: 0.147083, S: 0.147072, sl: 'Simpson 1/3 (0–4) + 3/8 (4–7)', met: 'comb', note: 'Equivale a ≈ 236.69 m. Suma ponderada del trapecio: 529.5 mi/h·s.' },
+      { n: 20, t: 'Trabajo de una banda elástica', tex: 'W=\\int_0^{2.8}F(x)\\,dx', desc: 'Fuerza medida a distintos desplazamientos de una banda elástica; el trabajo es el área bajo F(x).', mode: 't', data: BAN, sc: '1', un: 'lb·in', T: 4.544, S: 4.577167, sl: 'Simpson 1/3 (4 sub.) + 3/8 (3 sub.)', met: 'comb', note: 'Equivale a ≈ 0.517 J.' },
+      { n: 21, t: 'Perfil topográfico', tex: 'A\\approx\\int_{1}^{10}y(x)\\,dx', desc: 'Área bajo un perfil digitalizado entre x=1 y x=10.', mode: 't', data: PER, sc: '1', un: 'u²', T: 36.40, S: 36.85, sl: 'Simpson 1/3 (8 sub.) + trapecio (último)', met: 's13t', note: 'Datos ilustrativos extraídos visualmente (no exactos). La precisión depende de la digitalización; los grupos deben usar una tabla común.' },
+      { n: 22, t: 'Longitud de un cable (catenaria)', tex: 'L=\\int_{-12}^{26}\\sqrt{1+[y\']^2}\\,dx=\\int_{-12}^{26}\\cosh\\tfrac{x}{24}\\,dx', desc: 'Catenaria y = a·cosh(x/a), con a = 24 ft y apoyos en x=−12 y x=26 ft. Modelo geométrico simplificado, no un cálculo de ingeniería del teleférico.', mode: 'f', f: 'cosh(x/24)', a: '-12', b: '26', nn: 8, un: 'ft', R: 43.898841, T: 44.042044, S: 43.899213, sl: 'Simpson 1/3 (n=8)', met: 'all', note: 'Exacto: 24[sinh(26/24) − sinh(−12/24)].' },
+      { n: 23, t: 'Caudal en una tubería', tex: 'Q=\\int_0^{0.25}2\\pi r\\,v(r)\\,dr=\\int_0^{0.25}160\\pi r\\left(1-\\tfrac{r}{0.25}\\right)^{1/7}dr', desc: 'Perfil turbulento v(r)=80(1−r/R)^(1/7) con R=0.25 in.', mode: 'f', f: '160*pi*x*(1-x/0.25)^(1/7)', a: '0', b: '0.25', nn: 8, un: 'in³/s', R: 12.82817, T: 11.681778, S: 12.151244, sl: 'Simpson 1/3 (n=8)', met: 'all', note: 'Exacto: 49π/12. La derivada del perfil cerca de la pared hace que la convergencia sea lenta.' },
+      { n: 24, t: 'Longitud de una cardioide', tex: 'L=\\int_0^{2\\pi}\\sqrt{x\'^2+y\'^2}\\,dt=\\int_0^{2\\pi}20\\sin\\tfrac{t}{2}\\,dt=80', desc: 'x=2b·cos t − b·cos 2t, y=2b·sin t − b·sin 2t, con b=5 y t entre 0 y 2π.', mode: 'f', f: '20*sin(x/2)', a: '0', b: '2*pi', nn: 8, un: 'u', R: 80, T: 78.969264, S: 80.010767, sl: 'Simpson 1/3 (n=8)', met: 'all', note: 'En la calculadora la variable se escribe x en lugar de t.' },
+      { n: 25, t: 'Energía potencial de un satélite', tex: '\\Delta U=mg_0\\int_0^{h}\\frac{R^2}{(R+y)^2}dy=\\frac{mg_0Rh}{R+h}', desc: 'Satélite de 500 kg elevado 800 km, con g(y)=g₀R²/(R+y)², g₀=9.81 m/s², R=6 371 000 m.', mode: 'f', f: '500*9.81*6371000^2/(6371000+x)^2', a: '0', b: '800000', nn: 8, un: 'J', R: 3486236787, T: 3486620080, S: 3486236900, sl: 'Simpson 1/3 (n=8)', met: 'all', note: 'Resultados del solucionario: 3.48662008×10⁹ J (trapecio) y 3.48623690×10⁹ J (Simpson).' },
+      { n: 26, t: 'Superficie del lago (Erie → Titicaca)', tex: 'A=\\int_{40}^{260}w(x)\\,dx', desc: 'Anchuras medidas cada 20 millas en la figura. Luego se propone adaptar el procedimiento al Titicaca con datos geográficos adecuados.', mode: 't', data: '', sc: '1', un: 'mi²', R: 9940, T: null, S: null, sl: '', met: 'all', note: 'Sin una tabla oficial de anchuras no existe una única aproximación reproducible: la docente debe entregar una tabla común. Error% = 100·|A_num − 9940|/9940.' },
+      { n: 27, t: 'Volumen de un objeto alargado', tex: 'V=\\pi\\int_0^{12}r^2\\,dz,\\quad r=d/2', desc: 'Diámetro d medido a lo largo del eje z (0 a 12 in). Se estima volumen y se discute la fórmula simplificada de superficie.', mode: 't', data: OBJ, tr: 'vol', sc: '1', un: 'in³', T: 199.40474, S: 201.842092, sl: 'Simpson 1/3 (n=12)', met: 'all', note: 'La fórmula S=2π∫r dz omite la pendiente (trapecio ≈159.278748 in², Simpson ≈162.315620 in²) y no es el área exacta. El área de revolución es S=2π∫r√(1+r′²)dz y exige estimar r′.' }
+    ];
+
+    /* ---------- Matriz y acordeón ---------- */
+    const errs = (v, R) => R ? `${fm(Math.abs(R - v))} (${fm(100 * Math.abs(R - v) / Math.abs(R), 4)}%)` : '—';
+    $('matriz').innerHTML = '<thead class="table-light"><tr><th>Ej.</th><th>Problema</th><th>Trapecio</th><th>Simpson</th><th>Referencia</th><th>Error trap.</th><th>Error Simpson</th></tr></thead><tbody>' +
+      EX.map(e => `<tr><td>${e.n}</td><td>${e.t}</td><td>${e.T != null ? fm(e.T) + ' ' + e.un : 'Depende de anchuras'}</td><td>${e.S != null ? fm(e.S) + ' ' + e.un : '—'}</td><td>${e.R ? fm(e.R) + ' ' + e.un : '—'}</td><td>${e.R && e.T != null ? errs(e.T, e.R) : '—'}</td><td>${e.R && e.S != null ? errs(e.S, e.R) : '—'}</td></tr>`).join('') + '</tbody>';
+
+    $('acc').innerHTML = EX.map((e, i) => `
+<div class="accordion-item"><h3 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#c${i}">Ejercicio ${e.n} · ${e.t}</button></h3>
+<div id="c${i}" class="accordion-collapse collapse" data-bs-parent="#acc"><div class="accordion-body">
+<p>${e.desc}</p><p>\\(${e.tex}\\)</p>
+${e.T != null ? `<table class="table table-sm table-bordered w-auto"><tr><th>Método</th><th>Resultado (${e.un})</th><th>Error</th></tr>
+<tr><td>Trapecio</td><td>${fm(e.T)}</td><td>${errs(e.T, e.R)}</td></tr>
+<tr><td>Simpson: ${e.sl}</td><td>${fm(e.S)}</td><td>${errs(e.S, e.R)}</td></tr>
+${e.R ? `<tr class="ok"><td>Referencia / exacto</td><td>${fm(e.R)}</td><td></td></tr>` : ''}</table>` : ''}
+<p class="small text-muted">${e.note}</p>
+<button class="btn btn-acc btn-sm" onclick="loadEx(${i},true)">Probar en la calculadora</button>
+</div></div></div>`).join('');
+
+    $('pre').innerHTML = '<option value="-1">— Personalizado —</option>' + EX.map((e, i) => `<option value="${i}">Ej. ${e.n} · ${e.t}</option>`).join('');
+    $('pre').onchange = () => { const i = +$('pre').value; if (i >= 0) loadEx(i, false) };
+
+    /* ---------- Evaluador seguro de expresiones ---------- */
+    function mk(src) {
+      let s = String(src).trim();
+      if (!s || /Math/i.test(s)) throw new Error('Expresión vacía o no permitida.');
+      s = s.replace(/\^/g, '**').replace(/\b(sinh|cosh|tanh|sin|cos|tan|sqrt|exp|log|abs)\b/g, 'Math.$1').replace(/\bpi\b/gi, 'Math.PI');
+      if (!/^[0-9x+\-*\/().\seE]*$/.test(s.replace(/Math\.[A-Za-z]+/g, ''))) throw new Error('La expresión contiene símbolos no permitidos: ' + src);
+      try { return new Function('x', '"use strict";return (' + s + ')') } catch (_) { throw new Error('Expresión mal escrita: ' + src) }
+    }
+    const num = (src, name) => { const v = mk(src)(0); if (!Number.isFinite(v)) throw new Error(`"${name}" no es un número válido.`); return v };
+
+    /* ---------- Motor de integración ---------- */
+    const METHODS = {
+      trap: { name: 'Trapecio compuesto', seg: n => n >= 1 ? Array(n).fill('t') : null, why: 'requiere n ≥ 1' },
+      s13: { name: 'Simpson 1/3', seg: n => n >= 2 && n % 2 === 0 ? Array(n / 2).fill('a') : null, why: 'requiere n par' },
+      s38: { name: 'Simpson 3/8', seg: n => n >= 3 && n % 3 === 0 ? Array(n / 3).fill('b') : null, why: 'requiere n múltiplo de 3' },
+      comb: { name: 'Combinado 1/3 + 3/8', seg: n => n >= 2 && n % 2 === 0 ? Array(n / 2).fill('a') : n >= 3 ? [...Array((n - 3) / 2).fill('a'), 'b'] : null, why: 'requiere n ≥ 2' },
+      s13t: { name: 'Simpson 1/3 + trapecio final', seg: n => n >= 3 && n % 2 === 1 ? [...Array((n - 1) / 2).fill('a'), 't'] : null, why: 'solo para n impar ≥ 3' }
+    };
+    function weights(n, segs) {
+      const w = Array(n + 1).fill(0); let p = 0;
+      for (const s of segs) {
+        const c = { t: [.5, .5], a: [1 / 3, 4 / 3, 1 / 3], b: [3 / 8, 9 / 8, 9 / 8, 3 / 8] }[s];
+        c.forEach((v, k) => w[p + k] += v); p += c.length - 1;
+      }
+      return w;
+    }
+    const integ = (ys, h, w) => h * w.reduce((s, wi, i) => s + wi * ys[i], 0);
+
+    /* ---------- Calculadora ---------- */
+    let chart;
+    const mode = () => document.querySelector('input[name=mode]:checked').value;
+    document.querySelectorAll('input[name=mode]').forEach(r => r.onchange = () => { $('boxT').classList.toggle('d-none', mode() !== 't'); $('boxF').classList.toggle('d-none', mode() !== 'f') });
+    const alertBox = (t, k = 'danger') => `<div class="alert alert-${k} py-2">${t}</div>`;
+
+    function loadEx(i, run) {
+      const e = EX[i]; $('pre').value = i;
+      document.getElementById(e.mode === 't' ? 'm1' : 'm2').checked = true;
+      document.getElementById('m1').dispatchEvent(new Event('change'));
+      if (e.mode === 't') { $('tab').value = e.data; $('tr').value = e.tr || 'none' }
+      else { $('fx').value = e.f; $('a').value = e.a; $('b').value = e.b; $('n').value = e.nn }
+      $('un').value = e.un; $('sc').value = e.sc || '1'; $('ref').value = e.R || ''; $('met').value = e.met;
+      if (run !== null) bootstrap.Tab.getOrCreateInstance($('tabCal')).show();
+      if (run) calc(); else { $('msg').innerHTML = ''; $('out').classList.add('d-none') }
+      $('vout').innerHTML = '';
+    }
+
+    function nodes() {
+      let xs = [], ys = [], h;
+      if (mode() === 't') {
+        const rows = $('tab').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => l.split(/[\s,;]+/));
+        if (rows.length < 2) throw new Error('Ingresa al menos dos pares x, y.');
+        rows.forEach((r, i) => {
+          if (r.length !== 2 || r.some(v => v === '' || isNaN(+v))) throw new Error(`Línea ${i + 1}: se esperan exactamente dos valores numéricos (x, y).`);
+          xs.push(+r[0]); ys.push(+r[1]);
+        });
+        h = xs[1] - xs[0];
+        for (let i = 1; i < xs.length; i++) {
+          const d = xs[i] - xs[i - 1];
+          if (d <= 0) throw new Error(`x debe ser estrictamente creciente (revisa la línea ${i + 1}).`);
+          if (Math.abs(d - h) > 1e-6 * Math.abs(h) + 1e-12) throw new Error(`Espaciamiento no uniforme en la línea ${i + 1}: h=${fm(d, 6)} en vez de ${fm(h, 6)}.`);
+        }
+        const t = $('tr').value;
+        ys = ys.map(y => t === 'vol' ? Math.PI * (y / 2) ** 2 : t === 'sup' ? 2 * Math.PI * (y / 2) : y);
+      } else {
+        const f = mk($('fx').value), a = num($('a').value, 'a'), b = num($('b').value, 'b'), n = +$('n').value;
+        if (!Number.isInteger(n) || n < 1) throw new Error('n debe ser un entero positivo.');
+        if (n > 100000) throw new Error('n es demasiado grande (máximo 100000).');
+        if (!(b > a)) throw new Error('Debe cumplirse a < b.');
+        h = (b - a) / n;
+        for (let i = 0; i <= n; i++) { const x = i === n ? b : a + i * h; xs.push(x); const y = f(x); if (!Number.isFinite(y)) throw new Error(`f(x) no es finita en x=${fm(x, 6)}.`); ys.push(y) }
+      }
+      return { xs, ys, h, n: xs.length - 1 };
+    }
+
+    function calc() {
+      $('vout').innerHTML = '';
+      try {
+        const { xs, ys, h, n } = nodes();
+        const sc = num($('sc').value, 'Factor final'), un = $('un').value.trim();
+        const refTxt = $('ref').value.trim(), ref = refTxt ? num(refTxt, 'Valor ref.') : null;
+        const sel = $('met').value, keys = sel === 'all' ? Object.keys(METHODS) : [sel];
+        let msg = '', rows = '', wcols = [];
+        keys.forEach(k => {
+          const m = METHODS[k], segs = m.seg(n);
+          if (!segs) { if (sel !== 'all') msg += alertBox(`${m.name}: ${m.why} (n = ${n}).`); else rows += `<tr class="text-muted"><td>${m.name}</td><td colspan="3">No aplicable: ${m.why} (n = ${n})</td></tr>`; return }
+          const w = weights(n, segs), I = integ(ys, h, w) * sc; wcols.push({ m, w });
+          const ea = ref != null ? Math.abs(ref - I) : null;
+          rows += `<tr><td>${m.name}</td><td class="fw-bold">${fm(I)} ${un}</td><td>${ea != null ? fm(ea) : '—'}</td><td>${ea != null && ref !== 0 ? fm(100 * ea / Math.abs(ref), 4) + ' %' : '—'}</td></tr>`;
+        });
+        if (!wcols.length) { $('out').classList.add('d-none'); $('msg').innerHTML = msg || alertBox('Ningún método es aplicable con este n.'); return }
+        $('msg').innerHTML = msg;
+        $('info').textContent = `· n = ${n}, h = ${fm(h, 6)}${ref != null ? '' : ' · sin valor de referencia: no se calcula el error'}`;
+        $('rt').innerHTML = '<thead class="table-light"><tr><th>Método</th><th>Resultado</th><th>Error absoluto</th><th>Error %</th></tr></thead><tbody>' + rows + '</tbody>';
+        $('wt').innerHTML = '<thead><tr><th>i</th><th>xᵢ</th><th>fᵢ</th>' + wcols.map(c => `<th>w ${c.m.name.replace('Simpson', 'S').replace('compuesto', '')}</th>`).join('') + '</tr></thead><tbody>' +
+          xs.map((x, i) => `<tr><td>${i}</td><td>${fm(x, 4)}</td><td>${fm(ys[i], 6)}</td>${wcols.map(c => `<td>${fm(c.w[i], 4)}</td>`).join('')}</tr>`).join('') + '</tbody>';
+        $('out').classList.remove('d-none');
+        if (chart) chart.destroy();
+        chart = new Chart($('ch'), { type: 'line', data: { labels: xs.map(x => fm(x, 3)), datasets: [{ label: 'f(x) en los nodos (área bajo la curva)', data: ys, borderColor: '#2d6a6a', backgroundColor: 'rgba(45,106,106,.2)', fill: true, tension: 0, pointRadius: 3 }] }, options: { responsive: true, scales: { x: { title: { display: true, text: 'x' } }, y: { title: { display: true, text: 'f(x)' } } } } });
+      } catch (err) { $('out').classList.add('d-none'); $('msg').innerHTML = alertBox(err.message) }
+    }
+
+    /* ---------- Verificación mínima: x² en [0,2] ---------- */
+    function verif() {
+      $('msg').innerHTML = ''; $('out').classList.add('d-none');
+      const ex = 8 / 3; let rows = '';
+      [4, 8].forEach(n => {
+        const h = 2 / n, ys = Array.from({ length: n + 1 }, (_, i) => (i * h) ** 2);
+        const T = integ(ys, h, weights(n, METHODS.trap.seg(n))), S = integ(ys, h, weights(n, METHODS.s13.seg(n)));
+        rows += `<tr><td>${n}</td><td>${fm(T)}</td><td>${fm(Math.abs(ex - T))}</td><td>${fm(S)}</td><td>${fm(Math.abs(ex - S))}</td></tr>`;
+      });
+      $('vout').innerHTML = `<div class="card card-body"><h2 class="h5">Verificación: ∫₀² x² dx = 8/3 = ${fm(ex)}</h2>
+  <div class="table-responsive"><table class="table table-sm table-bordered bg-white mb-1"><thead class="table-light"><tr><th>n</th><th>Trapecio</th><th>Error</th><th>Simpson 1/3</th><th>Error</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <p class="small text-muted mb-0">Simpson integra x² de forma exacta (hasta redondeo). El error del trapecio se reduce ≈ 4 veces al duplicar n.</p></div>`;
+    }
+
+    $('go').onclick = calc; $('ver').onclick = verif;
+    loadEx(0, null);
+    window.addEventListener('load', () => { if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise() });
+    document.addEventListener('shown.bs.tab', () => { if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise() });
+    document.addEventListener('shown.bs.collapse', () => { if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise() });
+  </script>
+</body>
+
+</html>
